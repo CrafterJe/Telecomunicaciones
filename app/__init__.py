@@ -7,6 +7,6 @@ def create_app():
     app = Flask(__name__)
     app.config['MONGO_URI'] = MONGO_URI
     mongo.init_app(app)
-    
-    #? Resto de la configuración de la aplicación
+
+    CORS(app)
     return app
