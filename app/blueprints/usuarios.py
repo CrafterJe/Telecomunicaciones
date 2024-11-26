@@ -18,3 +18,29 @@ def listar_prod():
         r.append(usuario)
     v = dumps(r)
     return v
+
+
+@prod.route('/usuarios/create', methods=['POST'])
+def crear_usuario():
+    data = request.get_json()
+    result = mongo.db.usuarios.insert_one(data)
+    return jsonify({"msg": "Usuario creado", "id": str(result.inserted_id)})
+
+
+@prod.route('/usuarios/update/<id>', methods=['PUT'])
+def actualizar_usuario(id):
+    data = request.get_json()
+    result = mongo.db.usuarios.update_one({'_id': ObjectId(id)}, {'$set': data})
+    if result.matched_count > 0:
+        return jsonify({"msg": "Usuario actualizado"})
+    else:
+        return jsonify({"msg": "Usuario no encontrado"}), 404
+
+
+@prod.route('/usuarios/delete/<id>', methods=['DELETE'])
+def eliminar_usuario(id):
+    result = mongo.db.usuarios.delete_one({'_id': ObjectId(id)})
+    if result.deleted_count > 0:
+        return jsonify({"msg": "Usuario eliminado"})
+    else:
+        return jsonify({"msg": "Usuario no encontrado"}), 404

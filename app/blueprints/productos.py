@@ -20,8 +20,30 @@ def listar_prod():
     return v
 
 
+@prod.route('/productos/create', methods=['POST'])
+def crear_producto():
+    data = request.get_json()
+    result = mongo.db.productos.insert_one(data)
+    return jsonify({"msg": "Producto creado", "id": str(result.inserted_id)})
 
 
+@prod.route('/productos/update/<id>', methods=['PUT'])
+def actualizar_producto(id):
+    data = request.get_json()
+    result = mongo.db.productos.update_one({'_id': ObjectId(id)}, {'$set': data})
+    if result.matched_count > 0:
+        return jsonify({"msg": "Producto actualizado"})
+    else:
+        return jsonify({"msg": "Producto no encontrado"}), 404
+
+
+@prod.route('/productos/delete/<id>', methods=['DELETE'])
+def eliminar_producto(id):
+    result = mongo.db.productos.delete_one({'_id': ObjectId(id)})
+    if result.deleted_count > 0:
+        return jsonify({"msg": "Producto eliminado"})
+    else:
+        return jsonify({"msg": "Producto no encontrado"}), 404
 
 
 
