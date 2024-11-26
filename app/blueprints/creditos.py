@@ -6,10 +6,10 @@ from flask import Blueprint, jsonify
 from bson.json_util import dumps
 from flask import request
 
-prod = Blueprint('credits', __name__)
+creds = Blueprint('credits', __name__)
 app = create_app()
 
-@prod.route('/creditos/get_all', methods=['GET'])
+@creds.route('/creditos/get_all', methods=['GET'])
 def listar_prod():
     data=mongo.db.creditos.find({})
     r=[]
@@ -19,14 +19,14 @@ def listar_prod():
     v = dumps(r)
     return v
 
-@prod.route('/creditos/create', methods=['POST'])
+@creds.route('/creditos/create', methods=['POST'])
 def crear_credito():
     data = request.get_json()
     result = mongo.db.creditos.insert_one(data)
     return jsonify({"msg": "Crédito creado", "id": str(result.inserted_id)})
 
 
-@prod.route('/creditos/update/<id>', methods=['PUT'])
+@creds.route('/creditos/update/<id>', methods=['PUT'])
 def actualizar_credito(id):
     data = request.get_json()
     result = mongo.db.creditos.update_one({'_id': ObjectId(id)}, {'$set': data})
@@ -36,7 +36,7 @@ def actualizar_credito(id):
         return jsonify({"msg": "Crédito no encontrado"}), 404
 
 
-@prod.route('/creditos/delete/<id>', methods=['DELETE'])
+@creds.route('/creditos/delete/<id>', methods=['DELETE'])
 def eliminar_credito(id):
     result = mongo.db.creditos.delete_one({'_id': ObjectId(id)})
     if result.deleted_count > 0:

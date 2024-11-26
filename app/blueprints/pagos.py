@@ -6,10 +6,10 @@ from flask import Blueprint, jsonify
 from bson.json_util import dumps
 from flask import request
 
-prod = Blueprint('pays', __name__)
+pays = Blueprint('pays', __name__)
 app = create_app()
 
-@prod.route('/pagos/get_all', methods=['GET'])
+@pays.route('/pagos/get_all', methods=['GET'])
 def listar_prod():
     data=mongo.db.pagos.find({})
     r=[]
@@ -19,14 +19,14 @@ def listar_prod():
     v = dumps(r)
     return v
 
-@prod.route('/pagos/create', methods=['POST'])
+@pays.route('/pagos/create', methods=['POST'])
 def crear_pago():
     data = request.get_json()
     result = mongo.db.pagos.insert_one(data)
     return jsonify({"msg": "Pago creado", "id": str(result.inserted_id)})
 
 
-@prod.route('/pagos/update/<id>', methods=['PUT'])
+@pays.route('/pagos/update/<id>', methods=['PUT'])
 def actualizar_pago(id):
     data = request.get_json()
     result = mongo.db.pagos.update_one({'_id': ObjectId(id)}, {'$set': data})
@@ -36,7 +36,7 @@ def actualizar_pago(id):
         return jsonify({"msg": "Pago no encontrado"}), 404
 
 
-@prod.route('/pagos/delete/<id>', methods=['DELETE'])
+@pays.route('/pagos/delete/<id>', methods=['DELETE'])
 def eliminar_pago(id):
     result = mongo.db.pagos.delete_one({'_id': ObjectId(id)})
     if result.deleted_count > 0:

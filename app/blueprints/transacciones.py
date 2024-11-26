@@ -6,10 +6,10 @@ from flask import Blueprint, jsonify
 from bson.json_util import dumps
 from flask import request
 
-prod = Blueprint('transactions', __name__)
+tran = Blueprint('transactions', __name__)
 app = create_app()
 
-@prod.route('/transacciones/get_all', methods=['GET'])
+@tran.route('/transacciones/get_all', methods=['GET'])
 def listar_prod():
     data=mongo.db.transacciones.find({})
     r=[]
@@ -19,14 +19,14 @@ def listar_prod():
     v = dumps(r)
     return v
 
-@prod.route('/transacciones/create', methods=['POST'])
+@tran.route('/transacciones/create', methods=['POST'])
 def crear_transaccion():
     data = request.get_json()
     result = mongo.db.transacciones.insert_one(data)
     return jsonify({"msg": "Transacción creada", "id": str(result.inserted_id)})
 
 
-@prod.route('/transacciones/update/<id>', methods=['PUT'])
+@tran.route('/transacciones/update/<id>', methods=['PUT'])
 def actualizar_transaccion(id):
     data = request.get_json()
     result = mongo.db.transacciones.update_one({'_id': ObjectId(id)}, {'$set': data})
@@ -36,7 +36,7 @@ def actualizar_transaccion(id):
         return jsonify({"msg": "Transacción no encontrada"}), 404
 
 
-@prod.route('/transacciones/delete/<id>', methods=['DELETE'])
+@tran.route('/transacciones/delete/<id>', methods=['DELETE'])
 def eliminar_transaccion(id):
     result = mongo.db.transacciones.delete_one({'_id': ObjectId(id)})
     if result.deleted_count > 0:
