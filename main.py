@@ -15,9 +15,9 @@ app.register_blueprint(usrs)
 app.register_blueprint(pays)
 app.register_blueprint(creds)
 app.register_blueprint(tran)
-app.register_blueprint(cart)
+app.register_blueprint(cart, url_prefix='/carrito')
 app.register_blueprint(auth)
 
 
 if __name__ == '__main__':
-    app.run(host="127.0.0.1", port=4000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)
