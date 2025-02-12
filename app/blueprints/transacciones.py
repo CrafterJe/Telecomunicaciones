@@ -1,7 +1,7 @@
 from datetime import datetime
 from bson import ObjectId
-from app import create_app
-from app.extensions import mongo
+from app.config import create_app
+from app.config.extensions import mongo
 from flask import Blueprint, jsonify
 from bson.json_util import dumps
 from flask import request

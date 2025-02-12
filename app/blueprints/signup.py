@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
-from app import create_app
-from app.extensions import mongo
+from app.config import create_app
+from app.config.extensions import mongo
 import bcrypt
 from jwt import encode, decode  # Importación para JWT
 from datetime import datetime, timedelta

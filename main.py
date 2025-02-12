@@ -1,4 +1,4 @@
-from app import create_app
+from app.config import create_app
 from app.blueprints.productos import prod
 from app.blueprints.usuarios import usrs
 from app.blueprints.pagos import pays
@@ -11,7 +11,7 @@ from flask_cors import CORS
 app = create_app()
 
 CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:4200", "http://192.168.100.19:4200"],
+    "origins": ["http://localhost:4200", "http://192.168.100.18:4200"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"]
 }})

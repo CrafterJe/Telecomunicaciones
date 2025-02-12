@@ -1,6 +1,6 @@
 import datetime
 from flask import Blueprint, request, jsonify
-from app.extensions import mongo
+from app.config.extensions import mongo
 from bson import ObjectId
 import jwt
 from functools import wraps

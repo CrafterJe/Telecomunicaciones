@@ -1,6 +1,6 @@
 from flask import Flask
-from app.config import MONGO_URI
-from app.extensions import mongo
+from app.config.config import MONGO_URI
+from app.config.extensions import mongo
 from flask_cors import CORS
 
 def create_app():
@@ -10,7 +10,7 @@ def create_app():
 
     CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:4200"],  # Tu URL de Angular
+        "origins": ["http://localhost:4200"],  # URL de Angular
         "methods": ["GET", "POST", "PUT", "DELETE"],
         "allow_headers": ["Content-Type", "Authorization"]
     }
