@@ -30,13 +30,13 @@ def register():
         # Encriptar la contraseña usando bcrypt
         hashed_password = bcrypt.hashpw(data['password'].encode('utf-8'), bcrypt.gensalt())
 
-        # Crear el nuevo usuario
+        # Crear el nuevo usuario con rol por defecto "usuario"
         new_user = {
             "nombre": data['nombre'],
             "usuario": data['usuario'],
             "email": data['email'],
             "password": hashed_password.decode('utf-8'),
-            "tipo": "cliente",
+            "rol": "usuario",  # Se asigna el rol por defecto
             "fecha_registro": datetime.utcnow()
         }
 
@@ -75,19 +75,18 @@ def login():
         if not usuario:
             return jsonify({"message": "Usuario no encontrado"}), 404
 
-        # Debugging:  información del usuario encontrado
-        print("Usuario encontrado en DB:")
-        print(f"ID: {usuario['_id']}")
-        print(f"Nombre: {usuario['nombre']}")
-        print(f"Usuario: {usuario['usuario']}")
-
         # Verificar la contraseña
         if bcrypt.checkpw(password.encode('utf-8'), usuario['password'].encode('utf-8')):
-            # Generar un token JWT
+
+            # Obtener el rol del usuario (por defecto "usuario" si no existe)
+            rol = usuario.get("rol", "usuario")
+
+            # Generar un token JWT que incluya el rol
             token = encode(
                 {
                     'user_id': str(usuario['_id']),
                     'nombre': usuario['nombre'],
+                    'rol': rol,  # Incluir el rol en el token
                     'exp': datetime.utcnow() + timedelta(hours=1)
                 },
                 SECRET_KEY,
@@ -109,18 +108,14 @@ def login():
             if isinstance(token, bytes):
                 token = token.decode('utf-8')
 
-            # Debugging: Imprimir token generado
-            print("Token generado:", token)
-
             return jsonify({
                 'token': token,
                 'user_id': str(usuario['_id']),
                 'username': usuario['nombre'],
+                'rol': rol,  # Se devuelve el rol en la respuesta
                 'message': 'Login exitoso'
             }), 200
 
-        # Si la contraseña no coincide
-        print("Contraseña incorrecta.")
         return jsonify({"message": "Contraseña incorrecta"}), 401
 
     except Exception as e:
