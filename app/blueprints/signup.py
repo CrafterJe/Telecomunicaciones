@@ -5,8 +5,7 @@ import bcrypt
 from jwt import encode, decode  # Importación para JWT
 from datetime import datetime, timedelta
 import os
-
-SECRET_KEY = os.getenv('JWT_SECRET_KEY', 'mi_clave_secreta_default')
+from app.blueprints.config import SECRET_KEY
 
 # Crear el Blueprint para la autenticación
 auth = Blueprint('auth', __name__)

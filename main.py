@@ -1,4 +1,5 @@
 from app.config import create_app
+from app.blueprints.admin import admin_bp
 from app.blueprints.productos import prod
 from app.blueprints.usuarios import usrs
 from app.blueprints.pagos import pays
@@ -11,12 +12,13 @@ from flask_cors import CORS
 app = create_app()
 
 CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:4200", "http://192.168.100.18:4200"],
+    "origins": ["http://localhost:4200", "http://192.168.100.25:4200"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization"]
 }})
 
 # Registrar los blueprints
+app.register_blueprint(admin_bp)
 app.register_blueprint(prod)
 app.register_blueprint(usrs)
 app.register_blueprint(pays)
