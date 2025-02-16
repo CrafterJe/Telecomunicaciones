@@ -6,6 +6,8 @@ from jwt import encode, decode  # Importación para JWT
 from datetime import datetime, timedelta
 import os
 from app.blueprints.config import SECRET_KEY
+import jwt
+from bson import ObjectId
 
 # Crear el Blueprint para la autenticación
 auth = Blueprint('auth', __name__)
@@ -120,3 +122,26 @@ def login():
     except Exception as e:
         print("Error en login:", str(e))
         return jsonify({"message": "Error en el servidor"}), 500
+
+@auth.route('/auth/rol', methods=['GET'])
+def obtener_rol():
+    token = request.headers.get('Authorization')
+
+    if not token:
+        return jsonify({"error": "Acceso no autorizado"}), 403
+
+    try:
+        token = token.replace("Bearer ", "").strip()
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get("user_id")
+
+        usuario = mongo.db.usuarios.find_one({"_id": ObjectId(user_id)})
+        if not usuario:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+        return jsonify({"rol": usuario.get("rol", "usuario")}), 200
+
+    except jwt.ExpiredSignatureError:
+        return jsonify({"error": "Token expirado"}), 403
+    except jwt.InvalidTokenError:
+        return jsonify({"error": "Token inválido"}), 403

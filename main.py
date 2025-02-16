@@ -6,7 +6,7 @@ from app.blueprints.pagos import pays
 from app.blueprints.creditos import creds
 from app.blueprints.transacciones import tran
 from app.blueprints.carrito import cart
-from app.blueprints.signup import auth
+from app.blueprints.auth import auth
 from flask_cors import CORS
 
 app = create_app()
