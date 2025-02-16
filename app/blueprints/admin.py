@@ -5,8 +5,9 @@ import jwt
 from functools import wraps
 from app.blueprints.config import SECRET_KEY
 
-admin_bp = Blueprint('admin', __name__)
 
+admin_bp = Blueprint('admin', __name__)
+admin_prod_bp = Blueprint('admin_productos', __name__)
 # Middleware para verificar si el usuario es admin
 def admin_required(f):
     @wraps(f)
@@ -117,3 +118,68 @@ def actualizar_rol(id):
     print("❌ Usuario no encontrado")
     return jsonify({"error": "Usuario no encontrado"}), 404
 
+@admin_prod_bp.route('/admin/productos', methods=['GET'])
+@admin_required
+def obtener_productos():
+    productos = list(mongo.db.productos.find({}))
+    for producto in productos:
+        producto["_id"] = str(producto["_id"])
+    return jsonify(productos), 200
+
+# Agregar un nuevo producto
+@admin_prod_bp.route('/admin/productos', methods=['POST'])
+@admin_required
+def agregar_producto():
+    data = request.json
+    if not data.get("nombre") or not data.get("tipo") or not data.get("precio"):
+        return jsonify({"error": "Faltan datos requeridos"}), 400
+
+    producto = {
+        "nombre": data["nombre"],
+        "tipo": data["tipo"],
+        "precio": data["precio"],
+        "especificaciones": data.get("especificaciones", {}),
+        "stock": data.get("stock", 0)
+    }
+
+    result = mongo.db.productos.insert_one(producto)
+    return jsonify({"message": "Producto agregado", "id": str(result.inserted_id)}), 201
+
+# Editar un producto
+@admin_prod_bp.route('/admin/productos/<id>', methods=['PUT'])
+@admin_required
+def editar_producto(id):
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "No se enviaron datos"}), 400
+
+        if not ObjectId.is_valid(id):
+            return jsonify({"error": "ID no válido"}), 400
+
+        producto = mongo.db.productos.find_one({"_id": ObjectId(id)})
+        if not producto:
+            return jsonify({"error": "Producto no encontrado"}), 404
+
+        # 🔹 Excluir el campo '_id' para evitar error de MongoDB
+        update_data = {k: v for k, v in data.items() if k != "_id" and v is not None}
+
+        mongo.db.productos.update_one({"_id": ObjectId(id)}, {"$set": update_data})
+
+        response = jsonify({"message": "Producto actualizado"})
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        return response, 200
+
+    except Exception as e:
+        print(f"❌ Error al actualizar producto: {str(e)}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+
+# Eliminar un producto
+@admin_prod_bp.route('/admin/productos/<id>', methods=['DELETE'])
+@admin_required
+def eliminar_producto(id):
+    result = mongo.db.productos.delete_one({"_id": ObjectId(id)})
+    if result.deleted_count:
+        return jsonify({"message": "Producto eliminado"}), 200
+    return jsonify({"error": "Producto no encontrado"}), 404
