@@ -15,7 +15,7 @@ def decrypt_env_and_get_variables(encryption_key_path, encrypted_file_path):
     # Desencriptar los datos
     decrypted_data = cipher_suite.decrypt(encrypted_data).decode('utf-8')
 
-    # Parsear las variables de entorno
+    # Parseado de las variables de entorno
     env_variables = {}
     for line in decrypted_data.splitlines():
         if line.strip() and not line.startswith('#'):  # Ignorar líneas vacías y comentarios

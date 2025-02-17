@@ -8,7 +8,10 @@ from app.blueprints.config import SECRET_KEY
 
 admin_bp = Blueprint('admin', __name__)
 admin_prod_bp = Blueprint('admin_productos', __name__)
+
 # Middleware para verificar si el usuario es admin
+# 
+# Requerir funcion para admin.py asi evitar problemas de seguridad
 def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
@@ -47,21 +50,21 @@ def admin_required(f):
 
     return decorated_function
 
-# 🔥 Obtener total de usuarios (solo admins)
+# Obtener total de usuarios (solo admins)
 @admin_bp.route('/admin/usuarios/total', methods=['GET'])
 @admin_required
 def total_usuarios():
     total = mongo.db.usuarios.count_documents({})
     return jsonify({"total": total})
 
-# 🔥 Obtener total de productos en stock (solo admins)
+# Obtener total de productos en stock (solo admins)
 @admin_bp.route('/admin/productos/total', methods=['GET'])
 @admin_required
 def total_productos():
     total = mongo.db.productos.count_documents({})
     return jsonify({"total": total})
 
-# 🔥 Obtener lista de usuarios (solo admins)
+# Obtener lista de usuarios (solo admins)
 @admin_bp.route('/admin/usuarios', methods=['GET'])
 @admin_required
 def obtener_usuarios():
@@ -70,7 +73,7 @@ def obtener_usuarios():
         usuario["_id"] = str(usuario["_id"])
     return jsonify(usuarios)
 
-# 🔥 Eliminar usuario por ID (solo admins)
+# Eliminar usuario por ID (solo admins)
 @admin_bp.route('/admin/usuarios/<id>', methods=['DELETE'])
 @admin_required
 def eliminar_usuario(id):
@@ -104,7 +107,7 @@ def actualizar_rol(id):
     decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
     user_id = decoded_token.get("user_id")
 
-    # 🔥 Evitar que un admin se degrade a usuario
+    # Evitar que un admin se degrade a usuario
     if id == user_id and nuevo_rol == "usuario":
         print("❌ Intento de degradarse a usuario")
         return jsonify({"error": "No puedes cambiarte tu propio rol a usuario"}), 403
@@ -133,23 +136,23 @@ def agregar_producto():
     try:
         data = request.json
 
-        # 🔹 Validar campos requeridos
+        # Validar campos requeridos
         if not data.get("nombre") or not data.get("tipo") or "precio" not in data:
             return jsonify({"error": "Faltan datos requeridos (nombre, tipo, precio)"}), 400
 
-        # 🔹 Validar que precio y stock sean números
+        # Validar que precio y stock sean números
         try:
             precio = float(data["precio"])
             stock = int(data.get("stock", 0))
         except ValueError:
             return jsonify({"error": "El precio debe ser un número y el stock un entero"}), 400
 
-        # 🔹 Validar que `especificaciones` sea un diccionario
+        # Validar que `especificaciones` sea un diccionario ('Arreglo')
         especificaciones = data.get("especificaciones", {})
         if not isinstance(especificaciones, dict):
             return jsonify({"error": "El campo 'especificaciones' debe ser un objeto JSON"}), 400
 
-        # 🔹 Crear el producto
+        # Crear el producto
         producto = {
             "nombre": data["nombre"],
             "tipo": data["tipo"],
@@ -183,7 +186,7 @@ def editar_producto(id):
         if not producto:
             return jsonify({"error": "Producto no encontrado"}), 404
 
-        # 🔹 Excluir el campo '_id' para evitar error de MongoDB
+        # Excluir el campo '_id' para evitar error de MongoDB
         update_data = {k: v for k, v in data.items() if k != "_id" and v is not None}
 
         mongo.db.productos.update_one({"_id": ObjectId(id)}, {"$set": update_data})
