@@ -130,20 +130,42 @@ def obtener_productos():
 @admin_prod_bp.route('/admin/productos', methods=['POST'])
 @admin_required
 def agregar_producto():
-    data = request.json
-    if not data.get("nombre") or not data.get("tipo") or not data.get("precio"):
-        return jsonify({"error": "Faltan datos requeridos"}), 400
+    try:
+        data = request.json
 
-    producto = {
-        "nombre": data["nombre"],
-        "tipo": data["tipo"],
-        "precio": data["precio"],
-        "especificaciones": data.get("especificaciones", {}),
-        "stock": data.get("stock", 0)
-    }
+        # 🔹 Validar campos requeridos
+        if not data.get("nombre") or not data.get("tipo") or "precio" not in data:
+            return jsonify({"error": "Faltan datos requeridos (nombre, tipo, precio)"}), 400
 
-    result = mongo.db.productos.insert_one(producto)
-    return jsonify({"message": "Producto agregado", "id": str(result.inserted_id)}), 201
+        # 🔹 Validar que precio y stock sean números
+        try:
+            precio = float(data["precio"])
+            stock = int(data.get("stock", 0))
+        except ValueError:
+            return jsonify({"error": "El precio debe ser un número y el stock un entero"}), 400
+
+        # 🔹 Validar que `especificaciones` sea un diccionario
+        especificaciones = data.get("especificaciones", {})
+        if not isinstance(especificaciones, dict):
+            return jsonify({"error": "El campo 'especificaciones' debe ser un objeto JSON"}), 400
+
+        # 🔹 Crear el producto
+        producto = {
+            "nombre": data["nombre"],
+            "tipo": data["tipo"],
+            "precio": precio,
+            "especificaciones": especificaciones,
+            "stock": stock
+        }
+
+        result = mongo.db.productos.insert_one(producto)
+
+        return jsonify({"message": "Producto agregado", "id": str(result.inserted_id)}), 201
+
+    except Exception as e:
+        print(f"❌ Error al agregar producto: {str(e)}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
 
 # Editar un producto
 @admin_prod_bp.route('/admin/productos/<id>', methods=['PUT'])
