@@ -75,26 +75,43 @@ def obtener_usuarios():
 
 # Eliminar usuario por ID (solo admins)
 @admin_bp.route('/admin/usuarios/<id>', methods=['DELETE'])
-@admin_required
 def eliminar_usuario(id):
     token = request.headers.get('Authorization')
-    decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
-    user_id = decoded_token.get("user_id")
 
-    # Evitar que un admin se elimine a sí mismo
-    if id == user_id:
-        return jsonify({"error": "No puedes eliminar tu propio usuario"}), 403
+    if not token:
+        print("❌ No se envió token en la petición")
+        return jsonify({"error": "Token de autorización no presente"}), 401
 
-    result = mongo.db.usuarios.delete_one({"_id": ObjectId(id)})
-    if result.deleted_count:
-        return jsonify({"message": "Usuario eliminado"}), 200
-    return jsonify({"error": "Usuario no encontrado"}), 404
+    try:
+        token = token.replace("Bearer ", "").strip()
+        print(f"🔍 Token recibido en Flask: {token}")
+
+        decoded_token = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+        user_id = decoded_token.get("user_id")
+
+        if id == user_id:
+            return jsonify({"error": "No puedes eliminar tu propio usuario"}), 403
+
+        result = mongo.db.usuarios.delete_one({"_id": ObjectId(id)})
+        if result.deleted_count:
+            return jsonify({"message": "Usuario eliminado"}), 200
+        else:
+            return jsonify({"error": "Usuario no encontrado"}), 404
+
+    except jwt.DecodeError:
+        print("❌ Error: Token malformado o dañado")
+        return jsonify({"error": "Token inválido"}), 403
+
+    except Exception as e:
+        print(f"❌ Error en eliminar usuario: {str(e)}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
 
 @admin_bp.route('/admin/usuarios/<id>/rol', methods=['PUT'])
 @admin_required
 def actualizar_rol(id):
     data = request.json
-    print(f"🔹 Datos recibidos para actualizar rol: {data}")  # 🔥 Ver qué datos llegan
+    print(f"🔹 Datos recibidos para actualizar rol: {data}")  # Ver qué datos llegan
 
     nuevo_rol = data.get("rol")
 
