@@ -14,7 +14,7 @@ Antes de ejecutar el proyecto, asegúrate de tener instalado:
 Clona el repositorio y accede a la carpeta del backend:
 
 ```bash
-git clone https://github.com/tu-repositorio.git
+git clone https://github.com/CrafterJe/Telecomunicaciones.git
 cd backend
 ```
 
