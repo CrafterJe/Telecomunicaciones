@@ -254,29 +254,40 @@ def editar_producto(id):
 
         update_data = {k: v for k, v in data.items() if k != "_id" and v is not None}
 
+        # ✅ Convertir y validar especificaciones si existen
         if "especificaciones" in update_data:
             try:
                 update_data["especificaciones"] = json.loads(update_data["especificaciones"])
             except json.JSONDecodeError:
                 return jsonify({"error": "Formato de especificaciones inválido"}), 400
 
+        # ✅ Convertir y validar precio
         if "precio" in update_data:
             try:
                 update_data["precio"] = float(update_data["precio"])
+                if update_data["precio"] <= 0:
+                    return jsonify({"error": "El precio debe ser un número mayor a 0."}), 400
             except (ValueError, TypeError):
                 return jsonify({"error": "El precio debe ser un número válido."}), 400
-        
+
+        # ✅ Convertir y validar stock
         if "stock" in update_data:
             try:
                 update_data["stock"] = int(update_data["stock"])
+                if update_data["stock"] < 0:
+                    return jsonify({"error": "El stock debe ser un número entero mayor o igual a 0."}), 400
             except (ValueError, TypeError):
                 return jsonify({"error": "El stock debe ser un número entero válido."}), 400
 
-        # 🗑️ Validar que removedImagesIndexes exista y no sea vacío antes de eliminar imágenes
+        # ✅ Validar y actualizar `videoLink`
+        if "videoLink" in data:
+            update_data["videoLink"] = data["videoLink"]
+
+        # 🗑️ Manejo de eliminación de imágenes si `removedImagesIndexes` existe
         if "removedImagesIndexes" in update_data:
             try:
                 removed_indexes = json.loads(update_data["removedImagesIndexes"])
-                if isinstance(removed_indexes, list):
+                if isinstance(removed_indexes, list) and removed_indexes:
                     removed_indexes.sort(reverse=True)
                     imagenes_actuales = producto.get("imagenes", [])
 
@@ -292,6 +303,7 @@ def editar_producto(id):
         # 🛠️ No guardar removedImagesIndexes en la BD
         update_data.pop("removedImagesIndexes", None)
 
+        # ✅ Actualizar el producto en MongoDB
         mongo.db.productos.update_one({"_id": ObjectId(id)}, {"$set": update_data})
 
         return jsonify({"message": "Producto actualizado correctamente"}), 200
@@ -299,6 +311,7 @@ def editar_producto(id):
     except Exception as e:
         print(f"❌ Error al actualizar producto: {str(e)}")
         return jsonify({"error": "Error interno del servidor"}), 500
+
 
 # Eliminar un producto
 @admin_prod_bp.route('/productos/<id>', methods=['DELETE'])
