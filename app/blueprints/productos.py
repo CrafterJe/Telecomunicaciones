@@ -18,40 +18,44 @@ def listar_prod():
     r = []
     for producto in data:
         producto['_id'] = str(producto['_id'])
-        if 'imagen' in producto:
-            producto['imagen'] = True  # Marcar que sí tiene imagen
+
+        # Convertir imágenes a Base64
+        if 'imagenes' in producto and isinstance(producto['imagenes'], list):
+            producto['imagenes'] = [
+                img['$binary']['base64'] if isinstance(img, dict) and '$binary' in img else img
+                for img in producto['imagenes']
+            ]
         else:
-            producto['imagen'] = False
+            producto['imagenes'] = []
+
         r.append(producto)
-    v = dumps(r)
-    return v
+
+    return dumps(r)
 
 # Obtener la imagen de un producto específico
-@prod.route('/productos/<producto_id>/imagen', methods=['GET'])
-def obtener_imagen(producto_id):
+@prod.route('/productos/<producto_id>/imagen/<int:imagen_index>', methods=['GET'])
+def obtener_imagen(producto_id, imagen_index):
     try:
         producto = mongo.db.productos.find_one({'_id': ObjectId(producto_id)})
 
-        if not producto or 'imagen' not in producto:
+        if not producto or 'imagenes' not in producto or imagen_index >= len(producto['imagenes']):
             return jsonify({"error": "Imagen no encontrada"}), 404
 
-        imagen_data = producto['imagen']
+        imagen_data = producto['imagenes'][imagen_index]
 
-        # Verificar si la imagen es un diccionario con formato MongoDB
+        # Verificar si la imagen es válida
         if isinstance(imagen_data, dict) and '$binary' in imagen_data:
             imagen_base64 = imagen_data['$binary']['base64']
-        # Verificar si es una cadena válida en base64
         elif isinstance(imagen_data, str) and len(imagen_data) > 0:
             imagen_base64 = imagen_data
         else:
-            return jsonify({"error": f"Formato de imagen no válido para el producto {producto_id}"}), 400
+            return jsonify({"error": "Formato de imagen no válido"}), 400
 
         # Corregir padding de Base64 si es necesario
         missing_padding = len(imagen_base64) % 4
         if missing_padding != 0:
             imagen_base64 += '=' * (4 - missing_padding)
 
-        # Convertir de Base64 a bytes
         imagen_bytes = base64.b64decode(imagen_base64)
         return send_file(io.BytesIO(imagen_bytes), mimetype='image/jpeg')
 

@@ -13,14 +13,14 @@ from flask_cors import CORS
 app = create_app()
 
 CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:4200", "http://192.168.100.15:4200","*"],
+    "origins": ["http://localhost:4200", "http://192.168.100.25:4200","*"],
     "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     "allow_headers": ["Content-Type", "Authorization", "Accept"]
 }})
 
 # Registrar los blueprints
-app.register_blueprint(admin_bp)
-app.register_blueprint(admin_prod_bp)
+app.register_blueprint(admin_bp, url_prefix="/admin")
+app.register_blueprint(admin_prod_bp, url_prefix='/admin')
 app.register_blueprint(prod)
 app.register_blueprint(usrs)
 app.register_blueprint(pays)

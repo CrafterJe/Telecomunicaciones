@@ -4,7 +4,7 @@ from bson import ObjectId
 import jwt
 from functools import wraps
 from app.blueprints.config import SECRET_KEY
-
+import base64
 
 admin_bp = Blueprint('admin', __name__)
 admin_prod_bp = Blueprint('admin_productos', __name__)
@@ -51,21 +51,21 @@ def admin_required(f):
     return decorated_function
 
 # Obtener total de usuarios (solo admins)
-@admin_bp.route('/admin/usuarios/total', methods=['GET'])
+@admin_bp.route('/usuarios/total', methods=['GET'])
 @admin_required
 def total_usuarios():
     total = mongo.db.usuarios.count_documents({})
     return jsonify({"total": total})
 
 # Obtener total de productos en stock (solo admins)
-@admin_bp.route('/admin/productos/total', methods=['GET'])
+@admin_bp.route('/productos/total', methods=['GET'])
 @admin_required
 def total_productos():
     total = mongo.db.productos.count_documents({})
     return jsonify({"total": total})
 
 # Obtener lista de usuarios (solo admins)
-@admin_bp.route('/admin/usuarios', methods=['GET'])
+@admin_bp.route('/usuarios', methods=['GET'])
 @admin_required
 def obtener_usuarios():
     usuarios = list(mongo.db.usuarios.find({}, {"password": 0}))  # No enviar contraseñas
@@ -74,7 +74,7 @@ def obtener_usuarios():
     return jsonify(usuarios)
 
 # Eliminar usuario por ID (solo admins)
-@admin_bp.route('/admin/usuarios/<id>', methods=['DELETE'])
+@admin_bp.route('/usuarios/<id>', methods=['DELETE'])
 def eliminar_usuario(id):
     token = request.headers.get('Authorization')
 
@@ -107,7 +107,7 @@ def eliminar_usuario(id):
         return jsonify({"error": "Error interno del servidor"}), 500
 
 
-@admin_bp.route('/admin/usuarios/<id>/rol', methods=['PUT'])
+@admin_bp.route('/usuarios/<id>/rol', methods=['PUT'])
 @admin_required
 def actualizar_rol(id):
     data = request.json
@@ -138,63 +138,112 @@ def actualizar_rol(id):
     print("❌ Usuario no encontrado")
     return jsonify({"error": "Usuario no encontrado"}), 404
 
-@admin_prod_bp.route('/admin/productos', methods=['GET'])
+@admin_prod_bp.route('/productos', methods=['GET'])
 @admin_required
 def obtener_productos():
-    productos = list(mongo.db.productos.find({}))
-    for producto in productos:
-        producto["_id"] = str(producto["_id"])
-    return jsonify(productos), 200
+    try:
+        productos = list(mongo.db.productos.find({}))
 
+        for producto in productos:
+            producto["_id"] = str(producto["_id"])
+
+            # Convertir las imágenes a base64 si existen
+            if "imagenes" in producto:
+                imagenes = producto.get("imagenes")
+                imagenes_convertidas = []
+
+                for imagen in imagenes:
+                    if isinstance(imagen, dict) and "$binary" in imagen:
+                        imagenes_convertidas.append(imagen["$binary"]["base64"])
+                
+                producto["imagenes"] = imagenes_convertidas
+
+        return jsonify(productos), 200
+
+    except Exception as e:
+        print(f"❌ Error al obtener productos: {str(e)}")
+        return jsonify({"error": "Error interno del servidor"}), 500
+
+    
 # Agregar un nuevo producto
-@admin_prod_bp.route('/admin/productos', methods=['POST'])
-@admin_required
+@admin_prod_bp.route('/productos', methods=['POST'])
 def agregar_producto():
     try:
-        data = request.json
+        data = request.form.to_dict()  # Capturar los datos desde el formulario
+        imagenes = request.files.getlist('imagenes')  # Capturar múltiples imágenes
 
-        # Validar campos requeridos
+        # 🔍 Validar campos requeridos
         if not data.get("nombre") or not data.get("tipo") or "precio" not in data:
             return jsonify({"error": "Faltan datos requeridos (nombre, tipo, precio)"}), 400
 
-        # Validar que precio y stock sean números
+        # 🔢 Validar que precio y stock sean números positivos
         try:
             precio = float(data["precio"])
             stock = int(data.get("stock", 0))
+
+            if precio < 0 or stock < 0:
+                return jsonify({"error": "El precio y el stock deben ser números positivos"}), 400
         except ValueError:
-            return jsonify({"error": "El precio debe ser un número y el stock un entero"}), 400
+            return jsonify({"error": "El precio debe ser un número válido y el stock un número entero"}), 400
 
-        # Validar que `especificaciones` sea un diccionario ('Arreglo')
-        especificaciones = data.get("especificaciones", {})
-        if not isinstance(especificaciones, dict):
-            return jsonify({"error": "El campo 'especificaciones' debe ser un objeto JSON"}), 400
+        # 📝 Validar que las especificaciones sean un diccionario JSON
+        especificaciones = data.get("especificaciones", "{}")
+        try:
+            especificaciones = json.loads(especificaciones)
+        except json.JSONDecodeError:
+            return jsonify({"error": "Formato de especificaciones inválido, debe ser un objeto JSON"}), 400
 
-        # Crear el producto
+        # 📸 Procesar imágenes (máximo 5)
+        imagenes_guardadas = []
+        if not imagenes:
+            return jsonify({"error": "Debe subir al menos una imagen del producto"}), 400
+
+        for imagen in imagenes[:5]:  # Limitar a 5 imágenes
+            if imagen and imagen.filename.lower().endswith(('.jpg', '.jpeg')):
+                encoded_image = base64.b64encode(imagen.read()).decode('utf-8')
+                imagenes_guardadas.append({
+                    "$binary": {
+                        "base64": encoded_image,
+                        "subType": "00"
+                    }
+                })
+            else:
+                return jsonify({"error": "Las imágenes deben estar en formato JPG o JPEG"}), 400
+
+        # 🎥 Validar y agregar enlace de video si existe
+        video_link = data.get('videoLink')
+        if video_link and "youtube.com/watch?v=" not in video_link:
+            return jsonify({"error": "El enlace del video debe ser un enlace válido de YouTube"}), 400
+
+        # ✅ Crear el producto
         producto = {
             "nombre": data["nombre"],
             "tipo": data["tipo"],
             "precio": precio,
             "especificaciones": especificaciones,
-            "stock": stock
+            "stock": stock,
+            "imagenes": imagenes_guardadas,
+            "videoLink": video_link
         }
 
+        # 💾 Insertar el producto en la base de datos
         result = mongo.db.productos.insert_one(producto)
 
-        return jsonify({"message": "Producto agregado", "id": str(result.inserted_id)}), 201
+        return jsonify({"message": "Producto agregado correctamente", "id": str(result.inserted_id)}), 201
 
     except Exception as e:
         print(f"❌ Error al agregar producto: {str(e)}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
-
 # Editar un producto
-@admin_prod_bp.route('/admin/productos/<id>', methods=['PUT'])
+import json 
+
+@admin_prod_bp.route('/productos/<id>', methods=['PUT'])
 @admin_required
 def editar_producto(id):
     try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "No se enviaron datos"}), 400
+        data = request.form.to_dict()
+        imagenes_nuevas = request.files.getlist('imagenes')
 
         if not ObjectId.is_valid(id):
             return jsonify({"error": "ID no válido"}), 400
@@ -203,22 +252,56 @@ def editar_producto(id):
         if not producto:
             return jsonify({"error": "Producto no encontrado"}), 404
 
-        # Excluir el campo '_id' para evitar error de MongoDB
         update_data = {k: v for k, v in data.items() if k != "_id" and v is not None}
+
+        if "especificaciones" in update_data:
+            try:
+                update_data["especificaciones"] = json.loads(update_data["especificaciones"])
+            except json.JSONDecodeError:
+                return jsonify({"error": "Formato de especificaciones inválido"}), 400
+
+        if "precio" in update_data:
+            try:
+                update_data["precio"] = float(update_data["precio"])
+            except (ValueError, TypeError):
+                return jsonify({"error": "El precio debe ser un número válido."}), 400
+        
+        if "stock" in update_data:
+            try:
+                update_data["stock"] = int(update_data["stock"])
+            except (ValueError, TypeError):
+                return jsonify({"error": "El stock debe ser un número entero válido."}), 400
+
+        # 🗑️ Validar que removedImagesIndexes exista y no sea vacío antes de eliminar imágenes
+        if "removedImagesIndexes" in update_data:
+            try:
+                removed_indexes = json.loads(update_data["removedImagesIndexes"])
+                if isinstance(removed_indexes, list):
+                    removed_indexes.sort(reverse=True)
+                    imagenes_actuales = producto.get("imagenes", [])
+
+                    for index in removed_indexes:
+                        if 0 <= index < len(imagenes_actuales):
+                            del imagenes_actuales[index]
+
+                    update_data["imagenes"] = imagenes_actuales
+            except Exception as e:
+                print(f"❌ Error al procesar removedImagesIndexes: {str(e)}")
+                return jsonify({"error": "Error en removedImagesIndexes"}), 400
+
+        # 🛠️ No guardar removedImagesIndexes en la BD
+        update_data.pop("removedImagesIndexes", None)
 
         mongo.db.productos.update_one({"_id": ObjectId(id)}, {"$set": update_data})
 
-        response = jsonify({"message": "Producto actualizado"})
-        response.headers.add("Access-Control-Allow-Origin", "*")
-        return response, 200
+        return jsonify({"message": "Producto actualizado correctamente"}), 200
 
     except Exception as e:
         print(f"❌ Error al actualizar producto: {str(e)}")
         return jsonify({"error": "Error interno del servidor"}), 500
 
-
 # Eliminar un producto
-@admin_prod_bp.route('/admin/productos/<id>', methods=['DELETE'])
+@admin_prod_bp.route('/productos/<id>', methods=['DELETE'])
 @admin_required
 def eliminar_producto(id):
     result = mongo.db.productos.delete_one({"_id": ObjectId(id)})
