@@ -46,27 +46,46 @@ def obtener_carrito(user_id):
 
 @cart.route('/agregar', methods=['POST'])
 def agregar_al_carrito():
-    """Agregar un producto al carrito sin modificar el stock."""
+    """Agregar un producto al carrito sin permitir exceder el stock disponible."""
     try:
         data = request.get_json()
+        print("📥 Datos recibidos:", data)  # 🔹 Debugging
+
         user_id = data.get('userId')
         producto_id = data.get('productoId')
         cantidad = data.get('cantidad')
 
         if not user_id or not producto_id or not isinstance(cantidad, int) or cantidad <= 0:
-            return jsonify({"error": "Datos de entrada inválidos"}), 400
+            print("❌ Datos de entrada inválidos")
+            return jsonify({"error": "Datos de entrada inválidos"}), 200  # ✅ Cambiado de 400 a 200
 
         user_id_obj = ObjectId(user_id)
         carrito_usuario = mongo.db.carrito.find_one({"usuario_id": user_id_obj})
         if not carrito_usuario:
-            return jsonify({"error": "Carrito no encontrado"}), 404
+            print("❌ Carrito no encontrado para el usuario:", user_id)
+            return jsonify({"error": "Carrito no encontrado"}), 200  # ✅ Cambiado de 404 a 200
 
         producto = mongo.db.productos.find_one({"_id": ObjectId(producto_id)})
         if not producto:
-            return jsonify({"error": "Producto no encontrado"}), 404
+            print("❌ Producto no encontrado:", producto_id)
+            return jsonify({"error": "Producto no encontrado"}), 200  # ✅ Cambiado de 404 a 200
 
+        print("✅ Producto encontrado:", producto)
+
+        # Verificar stock
         producto_existente = next((p for p in carrito_usuario['productos'] if str(p['_id']) == producto_id), None)
+        cantidad_total = cantidad
+        if producto_existente:
+            cantidad_total += producto_existente['cantidad']
 
+        stock_disponible = producto.get("stock", 0)
+        print(f"🔍 Stock disponible: {stock_disponible}, Cantidad solicitada: {cantidad_total}")
+
+        if cantidad_total > stock_disponible:
+            print(f"❌ Stock insuficiente. Solo quedan {stock_disponible} unidades disponibles.")
+            return jsonify({"message": "error_controlado", "error": f"Stock insuficiente. Solo quedan {stock_disponible} unidades disponibles."}), 200  # ✅ Devuelve un mensaje en 200 OK
+
+        # Si pasa la validación, actualizar o agregar el producto al carrito
         if producto_existente:
             producto_existente['cantidad'] += cantidad
         else:
@@ -77,7 +96,6 @@ def agregar_al_carrito():
                 "precio": producto["precio"]
             })
 
-        # ✅ Calcular subtotal y total
         carrito_usuario['subtotal'], carrito_usuario['total'] = calcular_subtotal_y_total(carrito_usuario['productos'])
 
         mongo.db.carrito.update_one(
@@ -85,14 +103,16 @@ def agregar_al_carrito():
             {"$set": {"productos": carrito_usuario["productos"], "subtotal": carrito_usuario['subtotal'], "total": carrito_usuario['total']}}
         )
 
+        print("✅ Producto agregado correctamente al carrito.")
         return jsonify({"message": "Producto agregado al carrito"}), 200
 
     except Exception as e:
+        print("❌ Error interno del servidor:", str(e))
         return jsonify({"error": "Error interno del servidor"}), 500
 
 @cart.route('/actualizar', methods=['POST'])
 def actualizar_producto():
-    """Actualizar la cantidad de un producto en el carrito."""
+    """Actualizar la cantidad de un producto en el carrito sin exceder el stock."""
     try:
         data = request.get_json()
         user_id = data.get('usuario_id')
@@ -100,19 +120,27 @@ def actualizar_producto():
         cantidad = data.get('cantidad')
 
         if not user_id or not producto_id or not isinstance(cantidad, int) or cantidad <= 0:
-            return jsonify({"error": "Datos de entrada inválidos"}), 400
+            return jsonify({"message": "error_controlado", "error": "Datos de entrada inválidos"}), 200  # ✅ Devuelve 200 OK con mensaje de error
 
         carrito = mongo.db.carrito.find_one({"usuario_id": ObjectId(user_id)})
         if not carrito:
-            return jsonify({"error": "Carrito no encontrado"}), 404
+            return jsonify({"message": "error_controlado", "error": "Carrito no encontrado"}), 200  # ✅ Devuelve 200 OK
 
         producto_en_carrito = next((p for p in carrito['productos'] if str(p['_id']) == producto_id), None)
         if not producto_en_carrito:
-            return jsonify({"error": "Producto no encontrado en el carrito"}), 404
+            return jsonify({"message": "error_controlado", "error": "Producto no encontrado en el carrito"}), 200  # ✅ Devuelve 200 OK
+
+        producto_real = mongo.db.productos.find_one({"_id": ObjectId(producto_id)})
+        if not producto_real:
+            return jsonify({"message": "error_controlado", "error": "Producto no encontrado en la base de datos"}), 200  # ✅ Devuelve 200 OK
+
+        stock_disponible = producto_real.get("stock", 0)
+
+        if cantidad > stock_disponible:
+            return jsonify({"message": "error_controlado", "error": f"Stock insuficiente. Solo quedan {stock_disponible} unidades disponibles."}), 200  # ✅ Devuelve 200 OK
 
         producto_en_carrito['cantidad'] = cantidad
 
-        # ✅ Calcular subtotal y total
         carrito['subtotal'], carrito['total'] = calcular_subtotal_y_total(carrito['productos'])
 
         mongo.db.carrito.update_one(
@@ -123,7 +151,9 @@ def actualizar_producto():
         return jsonify({"message": "Cantidad actualizada", "carrito": convertir_objectid_a_str(carrito)}), 200
 
     except Exception as e:
+        print("❌ Error en actualizar_producto:", str(e))
         return jsonify({"error": "Error interno del servidor"}), 500
+
 
 @cart.route('/<user_id>/producto/<producto_id>', methods=['DELETE', 'OPTIONS'])
 def eliminar_producto(user_id, producto_id):
