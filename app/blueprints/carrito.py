@@ -45,10 +45,6 @@ def obtener_carrito(user_id):
         print("Error al obtener carrito:", str(e))
         return jsonify({"error": "Error interno del servidor"}), 500
 # Agregar un producto al carrito
-from bson import ObjectId
-import datetime
-from flask import jsonify, request
-from flask_cors import CORS
 
 def convertir_objectid_a_str(obj):
     """Convierte recursivamente todos los ObjectId en un objeto a string."""
@@ -75,30 +71,19 @@ def agregar_al_carrito():
             print("Datos de entrada inválidos")
             return jsonify({"error": "Datos de entrada inválidos"}), 400
 
-        # Convertir user_id a ObjectId
-        try:
-            user_id_obj = ObjectId(user_id)
-        except Exception:
-            print("ID de usuario inválido")
-            return jsonify({"error": "ID de usuario inválido"}), 400
-
-        print("Buscando carrito para el usuario:", user_id_obj)
+        user_id_obj = ObjectId(user_id)
         carrito_usuario = mongo.db.carrito.find_one({"usuario_id": user_id_obj})
         if not carrito_usuario:
-            print("Carrito no encontrado para el usuario:", user_id_obj)
-            return jsonify({"error": "Carrito no encontrado para este usuario"}), 404
+            return jsonify({"error": "Carrito no encontrado"}), 404
 
-        print("Buscando producto:", producto_id)
         producto = mongo.db.productos.find_one({"_id": ObjectId(producto_id)})
         if not producto:
-            print("Producto no encontrado:", producto_id)
             return jsonify({"error": "Producto no encontrado"}), 404
 
         if "stock" not in producto or producto["stock"] < cantidad:
-            print("Stock insuficiente para el producto:", producto_id)
             return jsonify({"error": "Stock insuficiente"}), 400
 
-        print("Agregando producto al carrito")
+        # Agregar el producto al carrito sin modificar el stock
         producto_existente = next(
             (p for p in carrito_usuario['productos'] if str(p['_id']) == producto_id), None)
 
@@ -115,16 +100,9 @@ def agregar_al_carrito():
         carrito_usuario['total'] = sum(
             p['cantidad'] * p['precio'] for p in carrito_usuario['productos'])
 
-        print("Actualizando carrito en la base de datos")
         mongo.db.carrito.update_one(
             {"_id": carrito_usuario["_id"]},
             {"$set": {"productos": carrito_usuario["productos"], "total": carrito_usuario["total"]}}
-        )
-
-        print("Actualizando stock del producto")
-        mongo.db.productos.update_one(
-            {"_id": producto["_id"]},
-            {"$inc": {"stock": -cantidad}}
         )
 
         return jsonify({"message": "Producto agregado al carrito"}), 200
@@ -132,6 +110,7 @@ def agregar_al_carrito():
     except Exception as e:
         print("Error en /carrito/agregar:", str(e))
         return jsonify({"error": "Error interno del servidor"}), 500
+
 # Eliminar un producto del carrito
 @cart.route('/<user_id>/producto/<producto_id>', methods=['DELETE'])
 def eliminar_producto(user_id, producto_id):
