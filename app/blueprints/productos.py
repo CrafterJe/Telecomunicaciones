@@ -9,7 +9,6 @@ import io
 
 # Crear blueprint para los productos
 prod = Blueprint('products', __name__)
-app = create_app()
 
 # Obtener todos los productos
 @prod.route('/productos/get_all', methods=['GET'])

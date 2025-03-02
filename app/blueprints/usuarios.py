@@ -7,7 +7,6 @@ from bson.json_util import dumps
 from flask import request
 
 usrs = Blueprint('users', __name__)
-app = create_app()
 
 @usrs.route('/usuarios/get_all', methods=['GET'])
 def listar_prod():

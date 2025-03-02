@@ -3,6 +3,7 @@ from flask import Blueprint, request, jsonify
 from app.config.extensions import mongo
 from bson import ObjectId
 import jwt
+from app.blueprints.decorators import auth_required
 
 # Crear el Blueprint para el carrito
 cart = Blueprint('carrito', __name__)
@@ -27,6 +28,7 @@ def calcular_subtotal_y_total(productos):
     return float(f"{subtotal:.2f}"), float(f"{total:.2f}")  # Convertir a string y luego a float para mantener decimales
 
 @cart.route('/<user_id>', methods=['GET'])
+@auth_required
 def obtener_carrito(user_id):
     """Obtener el carrito de compras del usuario."""
     try:
@@ -45,6 +47,7 @@ def obtener_carrito(user_id):
 
 
 @cart.route('/agregar', methods=['POST'])
+@auth_required
 def agregar_al_carrito():
     """Agregar un producto al carrito sin permitir exceder el stock disponible."""
     try:
@@ -111,6 +114,7 @@ def agregar_al_carrito():
         return jsonify({"error": "Error interno del servidor"}), 500
 
 @cart.route('/actualizar', methods=['POST'])
+@auth_required
 def actualizar_producto():
     """Actualizar la cantidad de un producto en el carrito sin exceder el stock."""
     try:
@@ -156,6 +160,7 @@ def actualizar_producto():
 
 
 @cart.route('/<user_id>/producto/<producto_id>', methods=['DELETE', 'OPTIONS'])
+@auth_required
 def eliminar_producto(user_id, producto_id):
     """Eliminar un producto del carrito y recalcular subtotal y total."""
     try:

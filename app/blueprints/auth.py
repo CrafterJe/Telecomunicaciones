@@ -11,7 +11,6 @@ from bson import ObjectId
 
 # Crear el Blueprint para la autenticación
 auth = Blueprint('auth', __name__)
-app = create_app()
 
 @auth.route('/register', methods=['POST'])
 def register():
