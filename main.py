@@ -8,15 +8,8 @@ from app.blueprints.creditos import creds
 from app.blueprints.transacciones import tran
 from app.blueprints.carrito import cart
 from app.blueprints.auth import auth
-from flask_cors import CORS
 
-app = create_app()
-
-CORS(app, resources={r"/*": {
-    "origins": ["http://localhost:4200", "http://192.168.100.33:4200","*"],
-    "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    "allow_headers": ["Content-Type", "Authorization", "Accept"]
-}})
+app = create_app()  
 
 # Registrar los blueprints
 app.register_blueprint(admin_bp, url_prefix="/admin")

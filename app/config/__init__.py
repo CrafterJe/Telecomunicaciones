@@ -10,7 +10,7 @@ def create_app():
 
     CORS(app, resources={
     r"/*": {
-        "origins": ["http://localhost:4200", "http://192.168.100.25:4200"],  # URL de Angular
+        "origins": ["http://localhost:4200", "http://192.168.100.33:4200", "*"],  # URL de Angular
         "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
         "allow_headers": ["Content-Type", "Authorization", "Accept"]
     }
