@@ -18,7 +18,7 @@ def register():
     try:
         data = request.get_json()
 
-        required_fields = ['nombre', 'apellidoP', 'usuario', 'email', 'password']  # Quitamos apellidoM de los requeridos
+        required_fields = ['nombre', 'apellidoP', 'usuario', 'email', 'password']
         if not all(field in data and data[field] for field in required_fields):
             return jsonify({"error": "Todos los campos obligatorios deben estar llenos"}), 400
 
@@ -31,12 +31,13 @@ def register():
         new_user = {
             "nombre": data['nombre'],
             "apellidoP": data['apellidoP'],
-            "apellidoM": data.get('apellidoM', ''),  # Si no se envía, se asigna una cadena vacía
+            "apellidoM": data.get('apellidoM', ''),  # Si no se envía, se deja como cadena vacía
             "usuario": data['usuario'],
             "email": data['email'],
             "password": hashed_password.decode('utf-8'),
             "rol": "usuario",
-            "fecha_registro": datetime.utcnow()
+            "fecha_registro": datetime.utcnow(),
+            "direcciones": []  # Se inicializa como un array vacío
         }
 
         result = mongo.db.usuarios.insert_one(new_user)
@@ -99,7 +100,7 @@ def login():
                     'user_id': str(usuario['_id']),
                     'nombre': usuario['nombre'],
                     'rol': rol,  # Incluir el rol en el token
-                    'exp': datetime.utcnow() + timedelta(hours=1)
+                    'exp': datetime.utcnow() + timedelta(minutes=1)
                 },
                 SECRET_KEY,
                 algorithm='HS256'

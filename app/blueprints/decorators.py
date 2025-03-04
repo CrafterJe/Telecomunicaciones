@@ -8,7 +8,7 @@ from app.config.extensions import mongo
 def auth_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        # Skip authentication for OPTIONS requests
+        # Skipear autenticacion para OPTIONS requests
         if request.method == 'OPTIONS':
             return f(*args, **kwargs)
             

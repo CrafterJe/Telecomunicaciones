@@ -8,6 +8,7 @@ from app.blueprints.creditos import creds
 from app.blueprints.transacciones import tran
 from app.blueprints.carrito import cart
 from app.blueprints.auth import auth
+from app.blueprints.panel_account import panel_acc
 
 app = create_app()  
 
@@ -21,6 +22,7 @@ app.register_blueprint(pays)
 app.register_blueprint(prod)
 app.register_blueprint(tran)
 app.register_blueprint(usrs)
+app.register_blueprint(panel_acc, url_prefix='/panel_account')
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
